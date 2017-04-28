@@ -1,5 +1,5 @@
 # NMEA0183-WiFi
-Pumping Data From Serial to Wifi on the cheap with an esp8266. 
+Pumping Data From Serial to Wifi on the cheap with an esp8266 using the arduino core. 
 
 Just copy credentials.h.example to credentials.h and fill in the blanks.
 
