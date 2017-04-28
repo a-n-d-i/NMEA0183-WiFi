@@ -10,6 +10,10 @@
 /*
  * Some soft Watchdog functionality taken from 
  * https://github.com/esp8266/Arduino/issues/1532
+ * 
+ * The idea is: restart if you don't succeed in sending
+ * a valid packet for more then 30 seconds.
+ * 
  */
 Ticker tickerOSWatch;
 
@@ -30,6 +34,9 @@ void ICACHE_RAM_ATTR osWatch(void) {
 /* we have to use softserial because ttl level from out nmea source is inverted compared to 
 the rs232 level of the esp8266 UART. Might be a good idea to use a level converter and the 
 build in UART instead of a voltage divider and softserial. Already put in an order for parts...
+
+get lib from here and extract to arduino libraries folder...
+https://github.com/plerup/espsoftwareserial
 */
 SoftwareSerial softserial(D1, 3, true); // RX, TX, inverted
 
@@ -49,9 +56,11 @@ void handleRoot() {
 
 void setup(void){
   last_loop = millis();
+  
   tickerOSWatch.attach_ms(((OSWATCH_RESET_TIME / 3) * 1000), osWatch);
 
   pinMode(LED_BUILTIN, OUTPUT); 
+  digitalWrite(LED_BUILTIN, HIGH);
   Serial.begin(4800);
   softserial.begin(4800);
   Serial.println("startup....");
@@ -79,7 +88,7 @@ char databuffer[300];
 
 void loop(void){
   server.handleClient();
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
   softserial.setTimeout(30);
 
   // just listen on the serial and send every line which starts
@@ -87,13 +96,14 @@ void loop(void){
   if (softserial.available() > 0 ) {
     byte count = softserial.readBytesUntil(0x0A, databuffer, 300);
     if (databuffer[0] == '$') {
+      // feed the watchdog
       last_loop = millis();
       currentSentence = String(databuffer);
       Serial.println(currentSentence);
       Udp.beginPacket(HOST, PORT);
       Udp.write(databuffer);
       Udp.endPacket();
-      digitalWrite(LED_BUILTIN, HIGH);
+      digitalWrite(LED_BUILTIN, LOW);
     }   
   }
 }
